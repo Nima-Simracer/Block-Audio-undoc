@@ -1,0 +1,46 @@
+name: Block Audio APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Quelltext auspacken
+        run: |
+          mkdir -p quelle
+          unzip -q -o $(ls blockaudio_quelltext*.zip | sort -V | tail -1) -d quelle
+          ls quelle
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v3
+
+      - name: Bauen
+        working-directory: quelle
+        run: |
+          chmod +x ./gradlew
+          set -o pipefail
+          ./gradlew assembleBlockDebug 2>&1 | tee ../baulog.txt
+
+      - name: Baubericht ablegen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Baubericht
+          path: baulog.txt
+
+      - name: APK ablegen
+        uses: actions/upload-artifact@v4
+        with:
+          name: BlockAudio-APK
+          path: quelle/DOK2/build/outputs/apk/block/debug/*.apk
+          if-no-files-found: error
